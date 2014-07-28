@@ -5,7 +5,7 @@ from decimal import Decimal, InvalidOperation
 from json import load
 from urllib import urlopen
 
-fiats = ['EUR', 'GBP', 'USD']
+fiats = ['CNY', 'EUR', 'GBP', 'PLN', 'RUR', 'USD']
 
 desc = 'Converts an amount of currency {0} to {1} using the current exchange rate from cryptonator. If no value is given an amount of 1 {0} is used.'
 
