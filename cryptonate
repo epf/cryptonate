@@ -1,0 +1,75 @@
+#!/usr/bin/env python2.7
+
+from argparse import ArgumentParser
+from decimal import Decimal, InvalidOperation
+from json import load
+from urllib import urlopen
+
+fiats = ['EUR', 'GBP', 'USD']
+
+desc = 'Converts an amount of currency {0} to {1} using the current exchange rate from cryptonator. If no value is given an amount of 1 {0} is used.'
+
+parser = ArgumentParser()
+
+try:
+    X,Y = [x.upper() for x in parser.prog.split('2')]
+    inferred = True
+except ValueError:
+    desc += ' If invoked as X2Y, the currencies X and Y are inferred.'
+    parser.add_argument('X', help='the currency to convert from')
+    parser.add_argument('Y', help='the currency to convert to')
+    inferred = False
+    X = 'X'
+    Y = 'Y'
+
+parser.description = desc.format(X, Y)
+
+parser.add_argument('N', help='the amount of {0} to convert to {1} (default: 1)'.format(X, Y), nargs='?', default=1)
+parser.add_argument('-v', '--verbose', help='display verbose output', action='store_true')
+
+args = parser.parse_args()
+
+if not inferred:
+    X = args.X.upper()
+    Y = args.Y.upper()
+
+try:
+    amt = Decimal(args.N)
+except InvalidOperation:
+    parser.print_usage()
+    print("{0}: error: argument N: invalid decimal value: '{1}'".format(parser.prog, args.N))
+    exit(1)
+
+url = 'https://www.cryptonator.com/api/ticker/{0}-{1}'.format(X.lower(), Y.lower())
+
+d = load(urlopen(url))
+
+success = d['success']
+
+if not success:
+    error = d['error']
+    print('Cryptonator returned an error: {0}'.format(error))
+    exit(1)
+
+ticker = d['ticker']
+price = ticker['price']
+price = Decimal(price)
+
+result = amt * price
+
+# Decimal overrides python's sensible default precision of 6 for floating point
+fmt = '{0:.6f}'
+
+# Round to the familiar hundredth if result is at least a tenth of a fiat currency
+if Y in fiats and result >= 0.1:
+    fmt = '{0:.2f}'
+# Use maximum precision (a satoshi) for results in BTC
+elif Y == 'BTC':
+    fmt = '{0:.8f}'
+
+if args.verbose:
+    fmt = '{0} {1} = {2} {3}'.format(amt, X, fmt, Y)
+
+print(fmt.format(result))
+
+# vim: ai si ts=4 sw=4 sts=4 et
